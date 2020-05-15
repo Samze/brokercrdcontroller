@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"github.com/google/uuid"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,8 +30,6 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	osb "github.com/kubernetes-sigs/go-open-service-broker-client/v2"
 	broker "github.com/samze/brokercrdcontroller/api/v1alpha1"
@@ -51,6 +48,7 @@ type BrokerReconciler struct {
 	Log             logr.Logger
 	ServicePlanCRDs []ServicePlanCRD
 	OSBClient       osb.Client
+	StopChan        <-chan struct{}
 }
 
 type ServicePlanCRD struct {
@@ -67,37 +65,13 @@ func (r *BrokerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	l := r.Log.WithValues("broker", req.NamespacedName)
 	l.Info("Reconciled")
 
-	if strings.Contains(req.Name, "Overview") {
-		l.Info("got a crd")
-		return ctrl.Result{}, nil
-	}
 	broker := &broker.Broker{}
-
 	err := r.Get(ctx, req.NamespacedName, broker)
-	if err == nil {
-		return r.ReconcileBroker(req)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
-	for _, crd := range r.ServicePlanCRDs {
-		unstruct := crd.CRD
-		err := r.Get(ctx, req.NamespacedName, unstruct)
-
-		if err == nil {
-			uuid, _ := uuid.NewUUID()
-			_, err := r.OSBClient.ProvisionInstance(&osb.ProvisionRequest{
-				InstanceID:       uuid.String(),
-				ServiceID:        crd.Service.ID,
-				PlanID:           crd.Plan.ID,
-				OrganizationGUID: "something",
-				SpaceGUID:        "something",
-			})
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-	}
-
-	return ctrl.Result{}, err
+	return r.ReconcileBroker(req)
 }
 
 func (r *BrokerReconciler) ReconcileBroker(req ctrl.Request) (ctrl.Result, error) {
@@ -136,11 +110,25 @@ func (r *BrokerReconciler) ReconcileBroker(req ctrl.Request) (ctrl.Result, error
 				CRD:     unstruct,
 			}
 
-			r.ServicePlanCRDs = append(r.ServicePlanCRDs, crd)
-
-			if err := r.Ctrl.Watch(&source.Kind{Type: unstruct}, &handler.EnqueueRequestForObject{}); err != nil {
+			mgr, err := r.getNewManager()
+			if err != nil {
 				return ctrl.Result{}, err
 			}
+
+			if err := (&DynamicReconciler{
+				Client:         mgr.GetClient(),
+				Log:            ctrl.Log.WithName("controllers").WithName("Broker"),
+				ServicePlanCRD: crd,
+				OSBClient:      r.OSBClient,
+			}).SetupWithManager(mgr); err != nil {
+				l.Info("problem setting up manager", err)
+			}
+
+			go func() {
+				if err := mgr.Start(r.StopChan); err != nil {
+					l.Info("problem running manager", err)
+				}
+			}()
 		}
 	}
 
@@ -152,15 +140,7 @@ func (r *BrokerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
-	ctrl, err := ctrl.NewControllerManagedBy(mgr).For(&broker.Broker{}).Build(r)
-	if err != nil {
-		return err
-	}
-
-	r.Ctrl = ctrl
-
-	return nil
-
+	return ctrl.NewControllerManagedBy(mgr).For(&broker.Broker{}).Complete(r)
 }
 
 type BrokerCRDCreator struct {
@@ -272,4 +252,11 @@ func getUnstructured(gvk metav1.GroupVersionKind) *unstructured.Unstructured {
 
 	unstructured.SetGroupVersionKind(schema.GroupVersionKind{Group: gvk.Group, Version: gvk.Version, Kind: gvk.Kind})
 	return unstructured
+}
+
+func (r *BrokerReconciler) getNewManager() (ctrl.Manager, error) {
+	return ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme:             r.Scheme,
+		MetricsBindAddress: "0", //turns off metric server
+	})
 }
