@@ -19,6 +19,7 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -53,6 +54,10 @@ func (r *BrokerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	broker := &broker.Broker{}
 	err := r.Get(ctx, req.NamespacedName, broker)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			//deleted
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -68,7 +73,13 @@ func (r *BrokerReconciler) ReconcileBroker(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, err
 	}
 
-	catalog, err := r.fetchCatalog(broker.Spec.URL, broker.Spec.Username, broker.Spec.Password)
+	osbclient, err := osbapi.GetClient(broker.Spec.URL, broker.Spec.Username, broker.Spec.Password)
+	if err != nil {
+		l.Info("error creating osbapi client")
+		return ctrl.Result{}, err
+	}
+
+	catalog, err := osbclient.GetCatalog()
 	if err != nil {
 		l.Info("error fetching catalog")
 		return ctrl.Result{}, err
@@ -94,7 +105,7 @@ func (r *BrokerReconciler) ReconcileBroker(req ctrl.Request) (ctrl.Result, error
 				Broker:       broker,
 			}
 
-			if err := r.setupManagerForCRD(crd); err != nil {
+			if err := r.setupManagerForCRD(osbclient, crd); err != nil {
 				return ctrl.Result{}, nil
 			}
 		}
@@ -111,22 +122,6 @@ func (r *BrokerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).For(&broker.Broker{}).Complete(r)
 }
 
-func (r *BrokerReconciler) fetchCatalog(url, username, password string) (*osb.CatalogResponse, error) {
-	client, err := osbapi.GetClient(url, username, password)
-	if err != nil {
-		return nil, err
-	}
-
-	//eek
-	r.OSBClient = client
-
-	cat, err := client.GetCatalog()
-	if err != nil {
-		return nil, err
-	}
-	return cat, nil
-}
-
 func getUnstructured(gvk metav1.GroupVersionKind) *unstructured.Unstructured {
 	unstructured := &unstructured.Unstructured{}
 
@@ -141,7 +136,7 @@ func (r *BrokerReconciler) getNewManager() (ctrl.Manager, error) {
 	})
 }
 
-func (r *BrokerReconciler) setupManagerForCRD(crd ServicePlanCRD) error {
+func (r *BrokerReconciler) setupManagerForCRD(osbclient osb.Client, crd ServicePlanCRD) error {
 	mgr, err := r.getNewManager()
 	if err != nil {
 		return err
@@ -151,7 +146,7 @@ func (r *BrokerReconciler) setupManagerForCRD(crd ServicePlanCRD) error {
 		Client:         mgr.GetClient(),
 		Log:            ctrl.Log.WithName("controllers").WithName("Broker"),
 		ServicePlanCRD: crd,
-		OSBClient:      r.OSBClient,
+		OSBClient:      osbclient,
 	}).SetupWithManager(mgr); err != nil {
 		r.Log.Info("problem setting up manager", err)
 	}

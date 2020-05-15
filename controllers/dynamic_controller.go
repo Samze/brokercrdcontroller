@@ -21,6 +21,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	broker "github.com/samze/brokercrdcontroller/api/v1alpha1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -54,6 +55,10 @@ func (r *DynamicReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	resource := r.ServicePlanCRD.Unstructured
 	if err := r.Get(ctx, req.NamespacedName, resource); err != nil {
+		if errors.IsNotFound(err) {
+			//deleted
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -76,7 +81,7 @@ func (r *DynamicReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	setProvisioned(resource)
 
-	l.Info("provisioned")
+	l.Info("Provisioned")
 	if err := r.Update(ctx, resource); err != nil {
 		return ctrl.Result{}, nil
 	}
