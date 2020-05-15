@@ -1,6 +1,6 @@
 # Brokercrdcontroller
 
-Go from OSBAPI Catalogs to Native K8s CRDS.
+A PoC that translates OSBAPI Catalogs to Native K8s CRDS dynamically.
 
 
 Go from a Service Broker Catalog that looks like this.
