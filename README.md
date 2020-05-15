@@ -21,27 +21,6 @@ Go from a Service Broker Catalog that looks like this.
           "name": "large",
           "description": "A large instance of the service.",
           "id": "6467cf08-ee3d-4083-af6e-8bf3d1b03de9"
-          "schemas": {
-            "service_instance": {
-              "create": {
-                "parameters": {
-                  "$schema": "http://json-schema.org/draft-04/schema#",
-                  "additionalProperties": false,
-                  "type": "object",
-                  "properties": {
-                    "color": {
-                      "type": "string",
-                      "enum": [
-                        "red",
-                        "amber",
-                        "green"
-                      ],
-                      "default": "green",
-                      "description": "Your favourite color"
-                  },
-              }
-            }
-          }
         }
       ]
     }
@@ -67,5 +46,3 @@ metadata:
 spec:
   color: red
 ```
-
->>>>>>> lil readme
