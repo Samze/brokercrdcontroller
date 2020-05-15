@@ -37,10 +37,10 @@ type DynamicReconciler struct {
 }
 
 type ServicePlanCRD struct {
-	Service osb.Service
-	Plan    osb.Plan
-	CRD     runtime.Unstructured
-	Broker  *broker.Broker
+	Service      osb.Service
+	Plan         osb.Plan
+	Unstructured runtime.Unstructured
+	Broker       *broker.Broker
 }
 
 // +kubebuilder:rbac:groups=broker.servicebrokers.vmware.com,resources=brokers,verbs=get;list;watch;create;update;patch;delete
@@ -52,14 +52,16 @@ func (r *DynamicReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	l := r.Log.WithValues("dynamic for:", name, "req", req.NamespacedName)
 	l.Info("Reconciled")
 
-	resource := r.ServicePlanCRD.CRD
+	resource := r.ServicePlanCRD.Unstructured
 	if err := r.Get(ctx, req.NamespacedName, resource); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if isProvisioned(resource) {
+		l.Info("Already provisioned")
 		return ctrl.Result{}, nil
 	}
+
 	uuid, _ := uuid.NewUUID()
 	_, err := r.OSBClient.ProvisionInstance(&osb.ProvisionRequest{
 		InstanceID:       uuid.String(),
@@ -74,6 +76,7 @@ func (r *DynamicReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	setProvisioned(resource)
 
+	l.Info("provisioned")
 	if err := r.Update(ctx, resource); err != nil {
 		return ctrl.Result{}, nil
 	}
@@ -82,7 +85,7 @@ func (r *DynamicReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 }
 
 func (r *DynamicReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	unstructured := r.ServicePlanCRD.CRD
+	unstructured := r.ServicePlanCRD.Unstructured
 	return ctrl.NewControllerManagedBy(mgr).For(unstructured).Complete(r)
 }
 

@@ -88,10 +88,10 @@ func (r *BrokerReconciler) ReconcileBroker(req ctrl.Request) (ctrl.Result, error
 
 			unstruct := getUnstructured(gvk)
 			crd := ServicePlanCRD{
-				Service: service,
-				Plan:    plan,
-				CRD:     unstruct,
-				Broker:  broker,
+				Service:      service,
+				Plan:         plan,
+				Unstructured: unstruct,
+				Broker:       broker,
 			}
 
 			if err := r.setupManagerForCRD(crd); err != nil {
