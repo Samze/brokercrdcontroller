@@ -20,11 +20,10 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
-	ctrl "sigs.k8s.io/controller-runtime"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	osb "github.com/kubernetes-sigs/go-open-service-broker-client/v2"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 // DynamicReconciler reconciles a Broker object
@@ -40,7 +39,8 @@ type DynamicReconciler struct {
 
 func (r *DynamicReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	l := r.Log.WithValues("dynamic for:", r.ServicePlanCRD.Service.Name+r.ServicePlanCRD.Plan.Name, "req", req.NamespacedName)
+	name := r.ServicePlanCRD.Service.Name + r.ServicePlanCRD.Plan.Name
+	l := r.Log.WithValues("dynamic for:", name, "req", req.NamespacedName)
 	l.Info("Reconciled")
 
 	crd := r.ServicePlanCRD.CRD
