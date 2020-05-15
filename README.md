@@ -2,7 +2,6 @@
 
 A PoC that translates OSBAPI Catalogs to Native K8s CRDS dynamically.
 
-
 Go from a Service Broker Catalog that looks like this.
 ```
 {
@@ -26,7 +25,6 @@ Go from a Service Broker Catalog that looks like this.
     }
   ]
 }
-
 ```
 
 To CRDs that can be created in k8s like this
@@ -46,3 +44,27 @@ metadata:
 spec:
   color: red
 ```
+
+### Usage
+
+1. make install && make run
+
+1. Register the broker with the broker CR:
+```
+apiVersion: broker.servicebrokers.vmware.com/v1alpha1
+kind: Broker
+metadata:
+  name: broker-sample
+spec:
+  URL: http://localhost:8080
+  username: USERNAME
+  password: PASSWORD
+```
+
+2. New CRDs will appear in the cluster
+
+### Notes
+
+* Creates a new CRD for each service + plan combination.
+* Maps OSBAPI create schema parameters to CRD Structural scheme.
+* Does not model binding
