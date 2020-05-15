@@ -88,6 +88,10 @@ func formatJSONSchemaProps(schema interface{}) *apiextensionsv1beta1.JSONSchemaP
 	outerProps := &apiextensionsv1beta1.JSONSchemaProps{
 		Properties: map[string]apiextensionsv1beta1.JSONSchemaProps{
 			"spec": *props,
+			"status": apiextensionsv1beta1.JSONSchemaProps{
+				Type:        "object",
+				Description: "status",
+			},
 		},
 	}
 	return outerProps

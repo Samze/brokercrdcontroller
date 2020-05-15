@@ -20,6 +20,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
+	broker "github.com/samze/brokercrdcontroller/api/v1alpha1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	osb "github.com/kubernetes-sigs/go-open-service-broker-client/v2"
@@ -34,6 +36,13 @@ type DynamicReconciler struct {
 	OSBClient      osb.Client
 }
 
+type ServicePlanCRD struct {
+	Service osb.Service
+	Plan    osb.Plan
+	CRD     runtime.Unstructured
+	Broker  *broker.Broker
+}
+
 // +kubebuilder:rbac:groups=broker.servicebrokers.vmware.com,resources=brokers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=broker.servicebrokers.vmware.com,resources=brokers/status,verbs=get;update;patch
 
@@ -43,9 +52,13 @@ func (r *DynamicReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	l := r.Log.WithValues("dynamic for:", name, "req", req.NamespacedName)
 	l.Info("Reconciled")
 
-	crd := r.ServicePlanCRD.CRD
-	if err := r.Get(ctx, req.NamespacedName, crd); err != nil {
+	resource := r.ServicePlanCRD.CRD
+	if err := r.Get(ctx, req.NamespacedName, resource); err != nil {
 		return ctrl.Result{}, err
+	}
+
+	if isProvisioned(resource) {
+		return ctrl.Result{}, nil
 	}
 	uuid, _ := uuid.NewUUID()
 	_, err := r.OSBClient.ProvisionInstance(&osb.ProvisionRequest{
@@ -55,9 +68,14 @@ func (r *DynamicReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		OrganizationGUID: "something",
 		SpaceGUID:        "something",
 	})
-
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+
+	setProvisioned(resource)
+
+	if err := r.Update(ctx, resource); err != nil {
+		return ctrl.Result{}, nil
 	}
 
 	return ctrl.Result{}, nil
@@ -66,4 +84,26 @@ func (r *DynamicReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 func (r *DynamicReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	unstructured := r.ServicePlanCRD.CRD
 	return ctrl.NewControllerManagedBy(mgr).For(unstructured).Complete(r)
+}
+
+func setProvisioned(resource runtime.Unstructured) {
+	content := resource.UnstructuredContent()
+	provisioned := map[string]interface{}{
+		"provisioned": true,
+	}
+	content["status"] = provisioned
+}
+
+func isProvisioned(resource runtime.Unstructured) bool {
+	content := resource.UnstructuredContent()
+	status, ok := content["status"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	v, ok := status["provisioned"]
+	if !ok || v == false {
+		return false
+	}
+	return true
+
 }

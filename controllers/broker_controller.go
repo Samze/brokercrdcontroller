@@ -42,13 +42,6 @@ type BrokerReconciler struct {
 	StopChan  <-chan struct{}
 }
 
-type ServicePlanCRD struct {
-	Service osb.Service
-	Plan    osb.Plan
-	CRD     runtime.Unstructured
-	Broker  *broker.Broker
-}
-
 // +kubebuilder:rbac:groups=broker.servicebrokers.vmware.com,resources=brokers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=broker.servicebrokers.vmware.com,resources=brokers/status,verbs=get;update;patch
 
