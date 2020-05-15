@@ -1,0 +1,8 @@
+apiVersion: broker.servicebrokers.vmware.com/v1alpha1
+kind: Broker
+metadata:
+  name: broker-sample
+spec:
+  URL: http://localhost:8080
+  username: admin
+  password: password

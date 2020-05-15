@@ -1,0 +1,7 @@
+version: "2"
+domain: servicebrokers.vmware.com
+repo: github.com/samze/brokercrdcontroller
+resources:
+- group: broker
+  version: v1alpha1
+  kind: Broker
