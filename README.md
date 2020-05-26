@@ -1,8 +1,6 @@
 # Brokercrdcontroller
 
-The current way to consume OSBAPI services on k8s is [Service Catalog](https://github.com/kubernetes-sigs/service-catalog). 
-
-Service Catalog provides a general purpose `ServiceInstance` CRD that you represents the instantiation of any type of Service. This is in contrast to there being a CRD for each service, which is how Operators work.
+The current way to consume OSBAPI services on k8s is [Service Catalog](https://github.com/kubernetes-sigs/service-catalog). Service Catalog provides a general purpose `ServiceInstance` CRD that you represents the instantiation of any type of Service. This is in contrast to there being a CRD for each service, which is how Operators tend work.
 
 This PoC translates Services found in OSBAPI Catalogs to K8s CRDS dynamically (on broker registration).
 
