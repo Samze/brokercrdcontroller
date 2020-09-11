@@ -1,4 +1,4 @@
-name: go
+name: unit-tests
 on:
   push:
     tags:
@@ -8,7 +8,7 @@ on:
   pull_request:
 jobs:
   checks:
-    name: go
+    name: unit-tests
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
