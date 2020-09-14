@@ -1,4 +1,4 @@
-name: unit-tests
+name: golangci-lint
 on:
   push:
     tags:
@@ -7,7 +7,21 @@ on:
       - master
   pull_request:
 jobs:
-  checks:
+  lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
+          version: v1.29
+          args: --skip-files=".*test.go"
+
+          # Optional: show only new issues if it's a pull request. The default value is `false`.
+          # only-new-issues: true
+  tests:
     name: unit-tests
     runs-on: ubuntu-latest
     steps:
@@ -16,5 +30,3 @@ jobs:
       uses: cedrickring/golang-action@1.6.0
       with:
         args: go test ./...
-
-            
