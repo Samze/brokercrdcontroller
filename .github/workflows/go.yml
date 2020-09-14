@@ -29,4 +29,4 @@ jobs:
     - name: run
       uses: cedrickring/golang-action@1.6.0
       with:
-        args: go test ./...
+        args: make test
