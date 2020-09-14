@@ -1,7 +1,6 @@
 apiVersion: servicebrokers.vmware.com/v1alpha1
-kind: OverviewServiceLarge
+kind: RabbitMQLarge
 metadata:
-  name: mylargeservice
+  name: myservicelarge
 spec:
   color: red
-

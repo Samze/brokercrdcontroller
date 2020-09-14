@@ -1,5 +1,5 @@
 apiVersion: servicebrokers.vmware.com/v1alpha1
-kind: OverviewServiceSmall
+kind: RabbitMQSmall
 metadata:
   name: myservice
 
